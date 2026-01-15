@@ -23,22 +23,21 @@
     .actions{ display:flex; gap:8px; }
     .icon-btn{ border:1px solid #e5e7eb; background:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; font-weight:bold; }
     .icon-btn:hover{ background:#f0f0f0; }
-   .btn { 
-             background:linear-gradient(135deg,var(--brand),var(--accent)); 
-             color:#fff; 
-             border:none; 
-             border-radius:12px; 
-             padding:12px; 
-             font-weight:bold; 
-             cursor:pointer; 
-             margin-top:12px; 
-             width: 100%;
-          }
-     
-    .btn:hover{ 
-              filter:brightness(1.05);
-              transform: scale(1.03); 
-              }
+    .btn {
+      background:linear-gradient(135deg,var(--brand),var(--accent));
+      color:#fff;
+      border:none;
+      border-radius:12px;
+      padding:12px;
+      font-weight:bold;
+      cursor:pointer;
+      margin-top:12px;
+      width: 100%;
+    }
+    .btn:hover{
+      filter:brightness(1.05);
+      transform: scale(1.03);
+    }
     #resultado{ margin-top:16px; text-align:center; font-weight:600; }
   </style>
 </head>
@@ -56,6 +55,7 @@
   <main>
     <section class="card">
       <div class="card-head"><h2>Cotizaciones de Refacciones Entregadas en Almacen</h2></div>
+
       <form id="formCot">
         <div class="form-row">
           <div class="col">
@@ -97,110 +97,130 @@
                 <th></th>
               </tr>
             </thead>
-            <tbody id="tbody">
-              <tr>
-                <td><input type="number" class="cant" min="0"></td>
-                <td><input type="text" class="desc"></td>
-                <td><input type="number" class="cost" step="0.01"></td>
-                <td class="imp">$0.00</td>
-                <td><button type="button" class="icon-btn del">✖</button></td>
-              </tr>
-            </tbody>
+
+            <!-- ✅ tbody vacío: JS crea 1 fila al iniciar -->
+            <tbody id="tbody"></tbody>
           </table>
         </div>
 
         <button type="submit" class="btn">Guardar</button>
         <div id="resultado"></div>
+        <div id="folioMostrado" style="margin-top:10px; font-weight:700;"></div>
       </form>
     </section>
   </main>
 
   <script>
     const tbody = document.getElementById('tbody');
-    document.getElementById('fecha_entrega').value = new Date().toISOString().slice(0,10);
 
-    function nuevaFila(){
+    // ✅ Fecha local (evita desfase UTC)
+    function hoyLocalISO() {
+      const d = new Date();
+      const tz = d.getTimezoneOffset() * 60000;
+      return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+    }
+    document.getElementById('fecha_entrega').value = hoyLocalISO();
+
+    function nuevaFila() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type='number' min='0' class='cant'></td>
-        <td><input type='text' class='desc'></td>
-        <td><input type='number' step='0.01' class='cost'></td>
-        <td class='imp'>$0.00</td>
-        <td><button type='button' class='icon-btn del'>✖</button></td>`;
+        <td><input type="number" class="cant" min="0"></td>
+        <td><input type="text" class="desc"></td>
+        <td><input type="number" class="cost" step="0.01"></td>
+        <td class="imp">$0.00</td>
+        <td><button type="button" class="icon-btn del">✖</button></td>`;
       tbody.appendChild(tr);
     }
+
+    // ✅ Arranque: 1 sola fila
+    tbody.innerHTML = '';
+    nuevaFila();
 
     // Cálculo visual del importe por fila
     tbody.addEventListener('input', () => {
       tbody.querySelectorAll('tr').forEach(r => {
-        const q = parseFloat(r.querySelector('.cant').value)||0;
-        const c = parseFloat(r.querySelector('.cost').value)||0;
-        r.querySelector('.imp').textContent = '$' + (q*c).toFixed(2);
+        const q = parseFloat(r.querySelector('.cant').value) || 0;
+        const c = parseFloat(r.querySelector('.cost').value) || 0;
+        r.querySelector('.imp').textContent = '$' + (q * c).toFixed(2);
       });
     });
 
-    // Borrar fila
+    // Borrar fila (funciona aunque des click al emoji)
     tbody.addEventListener('click', e => {
-      if(e.target.classList.contains('del')){
-        e.target.closest('tr').remove();
-      }
+      const btn = e.target.closest('.del');
+      if (btn) btn.closest('tr').remove();
+      if (tbody.querySelectorAll('tr').length === 0) nuevaFila();
     });
 
     document.getElementById('addRow').onclick = () => nuevaFila();
-    document.getElementById('clearRows').onclick = () => { tbody.innerHTML=''; nuevaFila(); };
-    nuevaFila();
-
-   
-  
-  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxWe5xdhbkQRxICNwriqPlSrBf42Tng5tf_9KdAyDun/dev';
-
-  document.getElementById('formCot').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const filas = Array.from(document.querySelectorAll('#tbody tr')).map(r => ({
-      cantidad: parseFloat(r.querySelector('.cant').value) || 0,
-      descripcion: r.querySelector('.desc').value,
-      costo: parseFloat(r.querySelector('.cost').value) || 0
-    })).filter(p => p.cantidad > 0 && p.descripcion.trim() !== '');
-
-    const payload = {
-      proveedor: document.getElementById('proveedor').value,
-      unidad: document.getElementById('unidad').value,
-      fecha_entrega: document.getElementById('fecha_entrega').value,
-      notas: document.getElementById('notas').value,
-      partidas: filas
+    document.getElementById('clearRows').onclick = () => {
+      tbody.innerHTML = '';
+      nuevaFila();
     };
 
-    const div = document.getElementById('resultado');
-    div.textContent = 'Enviando…';
+    // ✅ Pon aquí tu URL final /exec (recomendado), no /dev
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwN8lCXywHKLk749QFOo4FqMKrDqR4wEN1xJc8FworjJDCMAQxId5L_yWXzg9Mco84_dQ/exec';
 
-    try {
-      // 👇 Ojo: SIN headers personalizados, y body como texto
-      const res = await fetch(WEB_APP_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload) // Content-Type será text/plain por defecto y no hace preflight
-      });
+    document.getElementById('formCot').addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-      // Algunos navegadores pueden no exponer el cuerpo si hay CORS estricto.
-      // Pero Apps Script normalmente permite leerlo si el preflight no ocurre.
-      const json = await res.json();
-      if (json.ok) {
-        div.innerHTML = `✅ Guardado (fila ${json.row}).<br>
-                         <a href="${json.pdfUrl}" target="_blank">📄 Abrir PDF</a>`;
-      } else {
-        div.textContent = '❌ Error: ' + (json.error || 'desconocido');
+      const filas = Array.from(document.querySelectorAll('#tbody tr')).map(r => ({
+        cantidad: parseFloat(r.querySelector('.cant').value) || 0,
+        descripcion: (r.querySelector('.desc').value || '').trim(),
+        costo: parseFloat(r.querySelector('.cost').value) || 0
+      })).filter(p => p.cantidad > 0 && p.descripcion !== '');
+
+      const payload = {
+        proveedor: (document.getElementById('proveedor').value || '').trim(),
+        unidad: (document.getElementById('unidad').value || '').trim(),
+        fecha_entrega: document.getElementById('fecha_entrega').value,
+        notas: (document.getElementById('notas').value || '').trim(),
+        partidas: filas
+      };
+
+      const div = document.getElementById('resultado');
+      const folioDiv = document.getElementById('folioMostrado');
+      div.textContent = 'Enviando…';
+      folioDiv.textContent = '';
+
+      try {
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+
+        if (json.ok) {
+          folioDiv.textContent = `Último folio: ${json.folio || ''}`;
+
+          div.innerHTML = `
+            ✅ Guardado. Folio: <b>${json.folio || ''}</b><br><br>
+
+            <a href="${json.pdfUrl}" target="_blank" rel="noopener"
+              style="display:inline-block; padding:10px 12px; border-radius:10px; text-decoration:none; font-weight:700; border:1px solid #e5e7eb; margin-right:8px;">
+              📄 Abrir PDF
+            </a>
+
+            <a href="${(json.downloadUrl || json.pdfUrl)}" target="_blank" rel="noopener"
+              style="display:inline-block; padding:10px 12px; border-radius:10px; text-decoration:none; font-weight:700;
+                      background:linear-gradient(135deg,var(--brand),var(--accent)); color:#fff;">
+              ⬇️ Descargar PDF
+            </a>
+          `;
+
+          // Opcional: limpiar formulario (deja fecha)
+          // document.getElementById('formCot').reset();
+          // document.getElementById('fecha_entrega').value = hoyLocalISO();
+          // tbody.innerHTML = ''; nuevaFila();
+        } else {
+          div.textContent = '❌ Error: ' + (json.error || 'desconocido');
+        }
+
+      } catch (err) {
+        div.textContent = '❌ Error de red: ' + err.message;
       }
-    } catch (err) {
-      div.textContent = '❌ Error de red: ' + err.message;
-    }
-  });
-</script>
+    });
+  </script>
 </body>
 </html>
-
-
-
-
-
-
-
